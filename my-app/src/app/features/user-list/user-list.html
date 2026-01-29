@@ -1,0 +1,25 @@
+<div class="container mt-5">
+  <h2>User List</h2>
+
+  <div *ngIf="loading" class="alert alert-info">Loading users...</div>
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <table *ngIf="!loading && users.length" class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let user of users">
+        <td>{{ user.id }}</td>
+        <td>{{ user.name }}</td>
+        <td>{{ user.email }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p *ngIf="!loading && !users.length">No users found.</p>
+</div>
