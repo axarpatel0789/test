@@ -1,29 +1,38 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 import { throwError } from 'rxjs';
+import { inject } from '@angular/core';
+import { LoggingService } from '../services/logging.service';
 
 export const handleErrorInterceptor: HttpInterceptorFn = (req, next) => {
+  const logging = inject(LoggingService);
+
+  // Skip logging for logging service itself
+  if (req.url.includes('/api/logs')) {
+    return next(req);
+  }
+
   return next(req).pipe(
     catchError((error: any) => {
-      // Human-readable messages
-      let message = 'An unexpected error occurred.';
+      try {
+        // Only log actual errors, not all requests
+        const payload = {
+          level: 'error',
+          source: 'http',
+          message: (error && (error as any).message) || null,
+          error: logging.serializeError(error),
+          request: {
+            url: (req as any).urlWithParams ?? req.url,
+            method: req.method,
+          },
+          time: new Date().toISOString(),
+        };
 
-      if (!error) {
-        message = 'Unknown error.';
-      } else if (error.status === 0) {
-        // client-side or network error
-        message = 'Network error: please check your internet connection.';
-      } else if (error.error && typeof error.error === 'object' && error.error.message) {
-        message = error.error.message;
-      } else if (error.message) {
-        message = error.message;
-      } else if (error.statusText) {
-        message = error.statusText;
+        // Send error to backend (best-effort)
+        logging.sendLog(payload);
+      } catch (e) {
+        // silently fail to avoid blocking
       }
-
-      // log the error to console instead of displaying a global alert
-      console.error('HTTP Error intercepted:', error);
-      console.error('User message:', message);
 
       // rethrow so callers/consumers can still handle it if they want
       return throwError(() => error);
